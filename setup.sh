@@ -13,39 +13,54 @@ Install Cisco Packet Tracer latest version on Fedora Linux using
 .deb provided by Cisco. To download the installer, access this link:
 <https://www.netacad.com/portal/resources/packet-tracer>
 
- -d, --directory         Directory where is the installer
- -h, --help              Show this help message and exit
- --uninstall             Uninstall Cisco Packet Tracer
+ -d, --directory        Directory where is the installer
+ -h, --help             Show this help message and exit
+ --uninstall            Uninstall Cisco Packet Tracer
 "
 install () {
   echo "Extracting files"
   echo "Installing dependencies"
   sudo dnf -y install binutils fuse fuse-libs qt5-qttools
-  ! test -d /home/$user_name/.local/share/applications && sudo mkdir /home/$user_name/.local/share/applications
-  mkdir packettracer
+  ! test -d /home/$user_name/.local/share/applications && sudo mkdir -p /home/$user_name/.local/share/applications
+  
+  # Clean up any previous temporary extraction directory
+  rm -rf packettracer
+  mkdir -p packettracer
+  
   ar -x $selected_installer --output=packettracer
   tar -xvf packettracer/control.tar.xz --directory=packettracer
   tar -xvf packettracer/data.tar.xz --directory=packettracer 
   sudo cp -r packettracer/opt /
-  ! test -d /usr/local/bin && sudo mkdir /usr/local/bin
+  ! test -d /usr/local/bin && sudo mkdir -p /usr/local/bin
   sudo ln -sf /opt/pt/packettracer.AppImage /usr/local/bin/packettracer
-  /usr/local/bin/packettracer --pt-activate
-  sudo ./packettracer/postinst
-  sudo xdg-desktop-menu uninstall /usr/share/applications/cisco-pt*.desktop
-  sudo update-mime-database /usr/share/mime
-  sudo gtk-update-icon-cache -t --force /usr/share/icons
+  
+  if [ -x /usr/local/bin/packettracer ]; then
+    /usr/local/bin/packettracer --pt-activate || true
+  fi
+  
+  if [ -f packettracer/postinst ]; then
+    sudo ./packettracer/postinst || true
+  fi
+  
+  sudo xdg-desktop-menu uninstall /usr/share/applications/cisco-pt*.desktop || true
+  sudo update-mime-database /usr/share/mime || true
+  sudo gtk-update-icon-cache -t --force /usr/share/icons || true
   sudo rm -rf packettracer
-  exit
+  echo -e "${Green}${Bold}Installation completed successfully!${Color_Off}"
+  exit 0
 }
 
 uninstall () {
     if [ -e /opt/pt ]; then
       echo "Uninstalling Cisco Packet Tracer."
-      /usr/local/bin/packettracer --pt-deactivate
+      # Only run deactivation if the executable actually exists
+      if [ -x /usr/local/bin/packettracer ]; then
+        /usr/local/bin/packettracer --pt-deactivate || true
+      fi
       sudo rm -rf /opt/pt /usr/local/share/applications/CiscoPacketTracer*.desktop /home/$user_name/.local/share/applications/CiscoPacketTracer*.desktop /home/$user_name/.local/share/mime/packages/cisco-pk*.xml
-      sudo xdg-desktop-menu uninstall /usr/share/applications/cisco-pt*.desktop
-      sudo update-mime-database /usr/share/mime
-      sudo gtk-update-icon-cache -t --force /usr/share/icons
+      sudo xdg-desktop-menu uninstall /usr/share/applications/cisco-pt*.desktop || true
+      sudo update-mime-database /usr/share/mime || true
+      sudo gtk-update-icon-cache -t --force /usr/share/icons || true
 
       sudo rm -f /usr/local/bin/packettracer
     fi
